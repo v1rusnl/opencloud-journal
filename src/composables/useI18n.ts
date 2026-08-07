@@ -1,0 +1,186 @@
+/**
+ * Simple DE/EN translation composable.
+ * Reads the language from the HTML element set by OpenCloud.
+ * English strings are the keys; German strings are the values.
+ */
+
+const translations: Record<string, string> = {
+  // JournalView
+  'Journal': 'Journal',
+  'New entry': 'Neuer Eintrag',
+  'Collections': 'Sammlungen',
+  'New collection': 'Neue Sammlung',
+  'Drag to reorder': 'Zum Sortieren ziehen',
+  'Sort entries': 'Einträge sortieren',
+  'Sort A–Z': 'Sortieren A–Z',
+  'Sort Z–A': 'Sortieren Z–A',
+  'Created oldest first': 'Erstellungsdatum Alt–Neu',
+  'Created newest first': 'Erstellungsdatum Neu–Alt',
+  'Pin entry': 'Eintrag anpinnen',
+  'Unpin entry': 'Anheftung lösen',
+  'Filter': 'Filter',
+  'Search journal…': 'Journal durchsuchen…',
+  'All collections': 'Alle Sammlungen',
+  'entries': 'Einträge',
+  'No journal entries': 'Keine Journal-Einträge',
+  'Create your first VJOURNAL entry.': 'Erstelle deinen ersten VJOURNAL-Eintrag.',
+  '(untitled)': '(ohne Titel)',
+  'No description': 'Keine Beschreibung',
+  'Select an entry': 'Eintrag auswählen',
+  'Choose a journal entry on the left or create a new one.': 'Wähle links einen Journal-Eintrag aus oder erstelle einen neuen.',
+  'New VJOURNAL': 'Neuer VJOURNAL-Eintrag',
+  'VJOURNAL entry': 'VJOURNAL-Eintrag',
+  'Saving…': 'Speichern…',
+  'Journal title': 'Titel des Journal-Eintrags',
+  'Date': 'Datum',
+  'Collection': 'Sammlung',
+  'Categories': 'Kategorien',
+  'Comma-separated, e.g. Work, Ideas': 'Kommagetrennt, z. B. Arbeit, Ideen',
+  'Write your journal entry…': 'Schreibe deinen Journal-Eintrag…',
+  'This entry changed on the server. Refresh before saving again.': 'Dieser Eintrag wurde auf dem Server geändert. Bitte vor erneutem Speichern aktualisieren.',
+  'This entry changed on the server. Refresh before deleting it.': 'Dieser Eintrag wurde auf dem Server geändert. Bitte vor dem Löschen aktualisieren.',
+  'Delete this journal entry?': 'Diesen Journal-Eintrag löschen?',
+  'Name for the new journal collection': 'Name der neuen Journal-Sammlung',
+  'Search entries…': 'Einträge durchsuchen…',
+  'All': 'Alle',
+  'Journals': 'Journale',
+  'Notes': 'Notizen',
+  'Tasks': 'Aufgaben',
+  'Entry type': 'Eintragstyp',
+  'No entries': 'Keine Einträge',
+  'Create a journal, note or task.': 'Erstelle ein Journal, eine Notiz oder eine Aufgabe.',
+  'Choose an entry on the left or create a new one.': 'Wähle links einen Eintrag aus oder erstelle einen neuen.',
+  'New': 'Neu',
+  'Edit': 'Bearbeiten',
+  'Journal entry': 'Journal',
+  'Note': 'Notiz',
+  'Task': 'Aufgabe',
+  'Create new entry': 'Neuen Eintrag erstellen',
+  'Dated VJOURNAL – appears under Journal in jtxBoard': 'VJOURNAL mit Datum – erscheint in jtxBoard unter Journal',
+  'VJOURNAL without date – appears under Notes in jtxBoard': 'VJOURNAL ohne Datum – erscheint in jtxBoard unter Notizen',
+  'VTODO – appears under Tasks in jtxBoard': 'VTODO – erscheint in jtxBoard unter Aufgaben',
+  'Task title': 'Titel der Aufgabe',
+  'Note title': 'Titel der Notiz',
+  'Write your note…': 'Schreibe deine Notiz…',
+  'Describe the task…': 'Beschreibe die Aufgabe…',
+  'Start date': 'Startdatum',
+  'Due date': 'Fälligkeitsdatum',
+  'Due': 'Fällig',
+  'Changed': 'Geändert',
+  'No date': 'Ohne Datum',
+  'optional': 'optional',
+  'Status': 'Status',
+  'Open': 'Offen',
+  'In progress': 'In Bearbeitung',
+  'Completed': 'Erledigt',
+  'Cancelled': 'Abgebrochen',
+  'Progress': 'Fortschritt',
+  'Priority': 'Priorität',
+  'Delete this entry?': 'Diesen Eintrag löschen?',
+  'The entry changed during deletion. Refresh and try again.': 'Der Eintrag wurde während des Löschens geändert. Bitte aktualisieren und erneut versuchen.',
+  'A journal entry needs a date.': 'Ein Journal-Eintrag benötigt ein Datum.',
+  'No collection supports VTODO.': 'Keine Sammlung unterstützt VTODO.',
+  'No collection supports VJOURNAL.': 'Keine Sammlung unterstützt VJOURNAL.',
+  // CalendarView
+  'Agenda': 'Termine',
+  '+ New': '+ Neu',
+  'Loading…': 'Laden…',
+  // FullCalendar header buttons (passed as buttonText)
+  'month': 'Monat',
+  'week': 'Woche',
+  'day': 'Tag',
+  'list': 'Liste',
+  'today': 'Heute',
+  // EventDialog
+  'New Event': 'Neuer Termin',
+  'Edit Event': 'Termin bearbeiten',
+  'Title': 'Titel',
+  'Event title': 'Titel des Termins',
+  'All day': 'Ganztägig',
+  'Start': 'Beginn',
+  'End': 'Ende',
+  'Location': 'Ort',
+  'Description': 'Beschreibung',
+  'Calendar': 'Kalender',
+  'Delete': 'Löschen',
+  'Cancel': 'Abbrechen',
+  'Save': 'Speichern',
+  // CalendarDialog
+  'New Calendar': 'Neuer Kalender',
+  'Calendar Name': 'Kalendername',
+  'Calendar name': 'Kalendername',
+  'Color': 'Farbe',
+  'Create': 'Erstellen',
+  'Calendars': 'Kalender',
+  'Calendar already exists.': 'Kalender existiert bereits.',
+  // Repeat / recurrence
+  'Repeat': 'Wiederholen',
+  'None': 'Keine',
+  'Daily': 'Täglich',
+  'Weekly': 'Wöchentlich',
+  'Monthly': 'Monatlich',
+  'Yearly': 'Jährlich',
+  'Every': 'Alle',
+  'day(s)': 'Tag(e)',
+  'week(s)': 'Woche(n)',
+  'month(s)': 'Monat(e)',
+  'year(s)': 'Jahr(e)',
+  'On day': 'Am Tag',
+  'On the': 'Am',
+  'Never': 'Nie',
+  'After': 'Nach',
+  'Until': 'Bis',
+  'times': 'Mal',
+  'Recurring event': 'Wiederkehrender Termin',
+  'until': 'bis',
+  'Edits apply to the full series.': 'Änderungen gelten für die gesamte Serie.',
+  'Refresh': 'Aktualisieren',
+  // Ordinals and day abbreviations for recurrence labels
+  '1st': '1.', '2nd': '2.', '3rd': '3.', '4th': '4.', 'Last': 'Letzter',
+  'Mo': 'Mo', 'Tu': 'Di', 'We': 'Mi', 'Th': 'Do', 'Fr': 'Fr', 'Sa': 'Sa', 'Su': 'So',
+  'Mon': 'Mo', 'Tue': 'Di', 'Wed': 'Mi', 'Thu': 'Do', 'Fri': 'Fr', 'Sat': 'Sa', 'Sun': 'So',
+  // Validation errors
+  'Title is required.': 'Titel ist erforderlich.',
+  'End must be after start.': 'Ende muss nach dem Beginn liegen.',
+  'Please select a calendar.': 'Bitte einen Kalender auswählen.',
+  'Moving recurring events between calendars is not supported.': 'Serien-Termine können nicht zwischen Kalendern verschoben werden.',
+  'Delete occurrence': 'Diesen Termin löschen',
+  'Delete series': 'Serie löschen',
+  // Subscriptions
+  'Subscriptions': 'Abonnements',
+  'Add Subscription': 'Abonnement hinzufügen',
+  'iCal URL (.ics)': 'iCal-URL (.ics)',
+  'e.g. Public Holidays': 'z. B. Feiertage',
+  'Add': 'Hinzufügen',
+  'Please enter a valid URL.': 'Bitte eine gültige URL eingeben.',
+  'Show URL and QR code': 'URL und QR-Code anzeigen',
+  'Scan this code to add the calendar on another device.': 'Diesen Code scannen, um den Kalender auf einem anderen Gerät hinzuzufügen.',
+  'Copy URL': 'URL kopieren',
+  'Copied': 'Kopiert',
+  'Close': 'Schließen',
+  'Copying is unavailable here — select the address and copy it manually.': 'Kopieren ist hier nicht verfügbar – bitte die Adresse markieren und selbst kopieren.',
+  'Opens directly in a calendar app. Switch to https if your scanner ignores the link.': 'Öffnet direkt in einer Kalender-App. Auf https umschalten, falls dein Scanner den Link ignoriert.',
+  'A plain web link — your browser will show the raw calendar file.': 'Ein normaler Weblink – der Browser zeigt damit nur die rohe Kalenderdatei.',
+}
+
+// Must be read at call time, never captured in a module- or setup-level
+// constant: OpenCloud sets documentElement.lang after the extension has been
+// mounted, so anything evaluated during setup() still sees the empty default.
+export function isGerman(): boolean {
+  const lang = document.documentElement.lang || navigator.language || ''
+  return lang.toLowerCase().startsWith('de')
+}
+
+// BCP 47 tag for Intl formatters.
+export function localeTag(): string {
+  return isGerman() ? 'de-DE' : 'en-US'
+}
+
+export function useI18n() {
+  function t(key: string): string {
+    if (isGerman() && translations[key]) return translations[key]
+    return key
+  }
+
+  return { t, isGerman, localeTag }
+}

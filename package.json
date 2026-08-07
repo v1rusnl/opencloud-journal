@@ -1,0 +1,49 @@
+{
+  "name": "opencloud-journal",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.15",
+    "@fullcalendar/daygrid": "^6.1.15",
+    "@fullcalendar/interaction": "^6.1.15",
+    "@fullcalendar/list": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.15",
+    "@fullcalendar/vue3": "^6.1.15",
+    "@opencloud-eu/extension-sdk": "^6.1.0",
+    "@opencloud-eu/web-client": "^6.1.0",
+    "@opencloud-eu/web-pkg": "^6.1.0",
+    "ical.js": "^2.1.0",
+    "pinia": "^2.3.1",
+    "qr-creator": "^1.0.0",
+    "uuid": "^11.1.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "vue-demi"
+    ]
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "happy-dom": "^20.8.9",
+    "typescript": "^5.7.3",
+    "vite": "^8.0.4",
+    "vitest": "^3.1.1",
+    "vue-tsc": "^2.2.8",
+    "vue3-gettext": "4.0.0-beta.1"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
