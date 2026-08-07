@@ -21,6 +21,10 @@ A VJOURNAL viewer and editor (Notes, Tasks, Journal) for OpenCloud, based on the
 - Creates a VJOURNAL-oriented CalDAV collection with `MKCALENDAR`.
 - German and English UI strings.
 
+> [!Warning]
+> Back up Opencloud data (in particular Radicale) before installing or upgrading.
+This app reads and writes data directly via CalDAV. While it has been tested carefully, no software is free of bugs and you can recover your calendars if anything goes wrong.
+
 ## Development
 
 Requirements: Node.js 24 and pnpm 10.
@@ -37,13 +41,16 @@ The production bundle is written to `dist/`.
 
 ## OpenCloud deployment
 
-Copy the built application into the OpenCloud web apps directory, for example:
+Copy the built application into the OpenCloud web apps directory inside the container, for example:
 
 ```text
-<opencloud-data>/web/assets/apps/opencloud-journal/
+/var/lib/opencloud/web/assets/apps
 ```
+Typically in Opencloud 7.x default compose, the path is
 
-Check host names, paths, SSH keys and secrets before using them in another environment.
+```text
+./config/opencloud/apps:/var/lib/opencloud/web/assets/apps
+```
 
 ## CalDAV data model
 
@@ -66,7 +73,7 @@ END:VJOURNAL
 END:VCALENDAR
 ```
 
-The app intentionally keeps the first version focused on interoperable RFC 5545 fields. Attachments, rich-text/Markdown rendering, arbitrary custom properties and moving existing entries between collections are possible follow-up features.
+The app intentionally keeps the first version focused on interoperable RFC 5545 fields.
 
 ## Notes
 
@@ -79,11 +86,11 @@ The original repository is licensed under the GNU Affero General Public License 
 
 ## jtxBoard compatibility via DAVx5
 
-The app mirrors the three jtxBoard entry classes over CalDAV:
+The app mirrors the three jtxBoard entry classes over CalDAV (but it should work with other Apps/Programs that support these collection classes:
 
 - **Journal**: `VJOURNAL` with `DTSTART`
 - **Note**: `VJOURNAL` without `DTSTART`
-- **Task**: `VTODO` with optional start/due date, status, progress and priority -> Also working with Thunderbird
+- **Task**: `VTODO` with optional start/due date, status, progress and priority -> Also tested with Thunderbird
 
 The UI reads both `VJOURNAL` and `VTODO` collections. Before deleting an externally-synced item, it refreshes the resource ETag so changes made by DAVx5/jtxBoard after page load do not cause avoidable `412 Precondition Failed` errors. Weak ETags are kept verbatim and are not sent through `If-Match`, because HTTP strong comparison cannot match a weak ETag. Existing objects retain unrecognized iCalendar properties when edited, which helps avoid losing jtxBoard-specific metadata.
 
