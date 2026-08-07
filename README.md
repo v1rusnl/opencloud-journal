@@ -85,3 +85,7 @@ The UI reads both `VJOURNAL` and `VTODO` collections. Before deleting an externa
 ## Thanks
 
 Special thanks to FrankM from https://linux-nerds.org/topic/1850/opencloud-mein-erster-pr for the idea of user apps. Check out his blog and forum!
+
+## Disclaimer
+
+AI (GPT5.5) was used to support the building process of this app.
