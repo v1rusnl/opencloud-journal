@@ -25,6 +25,10 @@ A VJOURNAL viewer and editor (Notes, Tasks, Journal) for OpenCloud, based on the
 > Back up Opencloud data (in particular Radicale) before installing or upgrading.
 This app reads and writes data directly via CalDAV. While it has been tested carefully, no software is free of bugs and you can recover your calendars if anything goes wrong.
 
+## Security
+
+Please read the [Security considerations](SECURITY.md) regarding this app carefully before using the app.
+
 ## Development
 
 Requirements: Node.js 24 and pnpm 10.
