@@ -1,6 +1,6 @@
 # OpenCloud Journal
 
-A VJOURNAL viewer and editor for OpenCloud, based on the architecture of `opencloud-agenda`.
+A VJOURNAL viewer and editor for OpenCloud, based on the architecture of [opencloud-agenda](https://forgejo.linux-nerds.org/frank/opencloud-agenda)
 
 <img width="1899" height="904" alt="oc_journal" src="https://github.com/user-attachments/assets/140d6970-be10-47e6-ace2-0f49f7fba2a3" />
 
@@ -72,7 +72,7 @@ Some CalDAV servers expose collections that reject `VJOURNAL` queries. Those col
 The original repository is licensed under the GNU Affero General Public License v3.0. This derivative keeps the existing `LICENSE` file.
 
 
-## jtxBoard compatibility
+## jtxBoard compatibility via DAVx5
 
 The app mirrors the three jtxBoard entry classes over CalDAV:
 
