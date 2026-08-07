@@ -2,7 +2,7 @@
 
 A VJOURNAL viewer and editor for OpenCloud, based on the architecture of `opencloud-agenda`.
 
-<img width="1842" height="909" alt="oc_journal" src="https://github.com/user-attachments/assets/181ba08f-20a5-4ed7-a646-c0a9031aacce" />
+<img width="1899" height="904" alt="oc_journal" src="https://github.com/user-attachments/assets/140d6970-be10-47e6-ace2-0f49f7fba2a3" />
 
 ## Features
 
