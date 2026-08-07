@@ -2,6 +2,8 @@
 
 A VJOURNAL viewer and editor (Notes, Tasks, Journal) for OpenCloud, based on the architecture of [opencloud-agenda](https://forgejo.linux-nerds.org/frank/opencloud-agenda)
 
+![GPT-5.5](https://img.shields.io/badge/ChatGPT-74aa9c?logo=openai&logoColor=white) ![GPL 3.0](https://img.shields.io/badge/License-GPL_3.0-blue)
+
 > [!IMPORTANT]
 > This project is an independent, community-built tool and is not affiliated with, endorsed by, or associated with the OpenCloud project in any way.
 
