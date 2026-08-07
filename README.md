@@ -41,7 +41,8 @@ The production bundle is written to `dist/`.
 
 ## OpenCloud deployment
 
-Copy the built application into the OpenCloud web apps directory inside the container, for example:
+1. Download release archive
+2. Copy extracted opencloud-journal folder inside OpenCloud web apps directory inside the container, for example:
 
 ```text
 /var/lib/opencloud/web/assets/apps
