@@ -2,6 +2,8 @@
 
 A VJOURNAL viewer and editor for OpenCloud, based on the architecture of `opencloud-agenda`.
 
+<img width="1842" height="909" alt="oc_journal" src="https://github.com/user-attachments/assets/181ba08f-20a5-4ed7-a646-c0a9031aacce" />
+
 ## Features
 
 - Uses the OpenCloud user session to create a short-lived app token.
@@ -79,3 +81,7 @@ The app mirrors the three jtxBoard entry classes over CalDAV:
 - **Task**: `VTODO` with optional start/due date, status, progress and priority -> Also working with Thunderbird
 
 The UI reads both `VJOURNAL` and `VTODO` collections. Before deleting an externally-synced item, it refreshes the resource ETag so changes made by DAVx5/jtxBoard after page load do not cause avoidable `412 Precondition Failed` errors. Weak ETags are kept verbatim and are not sent through `If-Match`, because HTTP strong comparison cannot match a weak ETag. Existing objects retain unrecognized iCalendar properties when edited, which helps avoid losing jtxBoard-specific metadata.
+
+## Thanks
+
+Special thanks to FrankM from https://linux-nerds.org/topic/1850/opencloud-mein-erster-pr for the idea of user apps. Check out his blog and forum!
