@@ -2,6 +2,9 @@
 
 A VJOURNAL viewer and editor (Notes, Tasks, Journal) for OpenCloud, based on the architecture of [opencloud-agenda](https://forgejo.linux-nerds.org/frank/opencloud-agenda)
 
+> [!IMPORTANT]
+> This project is an independent, community-built tool and is not affiliated with, endorsed by, or associated with the OpenCloud project in any way.
+
 <img width="1899" height="904" alt="oc_journal" src="https://github.com/user-attachments/assets/140d6970-be10-47e6-ace2-0f49f7fba2a3" />
 
 ## Features
