@@ -1,3 +1,11 @@
+## 0.3.2
+
+- Added a built-in lightbox for image attachments.
+- Click a thumbnail to open the image in a full-screen preview.
+- Added previous/next navigation for entries with multiple images.
+- Added keyboard controls: Escape closes, Left/Right switch images.
+- Clicking the large image toggles between fit-to-screen and original-size view.
+
 ## 0.3.1
 
 - Added jtxBoard-compatible embedded image attachments for journals, notes and tasks.

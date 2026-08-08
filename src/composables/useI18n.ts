@@ -88,6 +88,13 @@ const translations: Record<string, string> = {
   'JPG, PNG or WebP images are embedded in the CalDAV item.': 'JPG-, PNG- oder WebP-Bilder werden direkt in den CalDAV-Eintrag eingebettet.',
   'Only JPG, PNG and WebP images are supported.': 'Es werden nur JPG-, PNG- und WebP-Bilder unterstützt.',
   'Could not read image.': 'Das Bild konnte nicht gelesen werden.',
+  'Open image': 'Bild öffnen',
+  'Image preview': 'Bildvorschau',
+  'Close': 'Schließen',
+  'Previous image': 'Vorheriges Bild',
+  'Next image': 'Nächstes Bild',
+  'Fit image to screen': 'Bild an Bildschirm anpassen',
+  'Show image at full size': 'Bild in Originalgröße anzeigen',
   // CalendarView
   'Agenda': 'Termine',
   '+ New': '+ Neu',

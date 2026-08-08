@@ -217,7 +217,9 @@
 
             <div v-if="draft.attachments.length" class="attachment-grid">
               <figure v-for="attachment in draft.attachments" :key="attachment.id" class="attachment-card">
-                <img :src="attachmentDataUrl(attachment)" :alt="attachment.filename" />
+                <button type="button" class="attachment-preview-button" :title="t('Open image')" @click="openLightbox(attachment.id)">
+                  <img :src="attachmentDataUrl(attachment)" :alt="attachment.filename" />
+                </button>
                 <figcaption>
                   <span :title="attachment.filename">{{ attachment.filename }}</span>
                   <small>{{ attachment.mimeType }}</small>
@@ -236,6 +238,57 @@
         </form>
       </section>
     </main>
+
+    <div
+      v-if="lightboxOpen && lightboxAttachment"
+      class="lightbox-backdrop"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('Image preview')"
+      @click.self="closeLightbox"
+    >
+      <div class="lightbox-shell">
+        <div class="lightbox-toolbar">
+          <div class="lightbox-meta">
+            <strong>{{ lightboxAttachment.filename }}</strong>
+            <span>{{ lightboxIndex + 1 }} / {{ draft?.attachments.length ?? 0 }}</span>
+          </div>
+          <button type="button" class="lightbox-close" :title="t('Close')" :aria-label="t('Close')" @click="closeLightbox">✕</button>
+        </div>
+
+        <button
+          v-if="(draft?.attachments.length ?? 0) > 1"
+          type="button"
+          class="lightbox-nav lightbox-prev"
+          :title="t('Previous image')"
+          :aria-label="t('Previous image')"
+          @click="showPreviousImage"
+        >‹</button>
+
+        <button
+          type="button"
+          class="lightbox-image-button"
+          :class="{ zoomed: lightboxZoomed }"
+          :title="lightboxZoomed ? t('Fit image to screen') : t('Show image at full size')"
+          @click="lightboxZoomed = !lightboxZoomed"
+        >
+          <img
+            :src="attachmentDataUrl(lightboxAttachment)"
+            :alt="lightboxAttachment.filename"
+            :class="{ zoomed: lightboxZoomed }"
+          />
+        </button>
+
+        <button
+          v-if="(draft?.attachments.length ?? 0) > 1"
+          type="button"
+          class="lightbox-nav lightbox-next"
+          :title="t('Next image')"
+          :aria-label="t('Next image')"
+          @click="showNextImage"
+        >›</button>
+      </div>
+    </div>
 
     <div v-if="showTypePicker" class="modal-backdrop" @click.self="showTypePicker = false">
       <section class="type-picker" role="dialog" aria-modal="true" :aria-label="t('Create new entry')">
@@ -261,7 +314,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useJournal } from '@/composables/useJournal'
 import { useI18n } from '@/composables/useI18n'
 import { detectImageMimeType, type EntryType, type JournalAttachment, type JournalCollection, type JournalEntry } from '@/services/journal'
@@ -278,6 +331,19 @@ const draft = ref<JournalEntry | null>(null)
 const isNew = ref(false)
 const saving = ref(false)
 const saveError = ref<string | null>(null)
+const lightboxOpen = ref(false)
+const lightboxAttachmentId = ref<string | null>(null)
+const lightboxZoomed = ref(false)
+
+const lightboxIndex = computed(() => {
+  if (!draft.value || !lightboxAttachmentId.value) return -1
+  return draft.value.attachments.findIndex(attachment => attachment.id === lightboxAttachmentId.value)
+})
+
+const lightboxAttachment = computed(() => {
+  const index = lightboxIndex.value
+  return draft.value && index >= 0 ? draft.value.attachments[index] : null
+})
 
 type SortMode = 'title-asc' | 'title-desc' | 'created-asc' | 'created-desc'
 const SORT_MODE_STORAGE_KEY = 'opencloud-journal.entry-sort.v1'
@@ -523,6 +589,55 @@ function typeLabel(type: EntryType): string { return type === 'task' ? 'Task' : 
 function taskStatusLabel(status?: string): string { return status === 'COMPLETED' ? 'Completed' : status === 'IN-PROCESS' ? 'In progress' : status === 'CANCELLED' ? 'Cancelled' : 'Open' }
 
 
+function openLightbox(attachmentId: string) {
+  lightboxAttachmentId.value = attachmentId
+  lightboxZoomed.value = false
+  lightboxOpen.value = true
+}
+
+function closeLightbox() {
+  lightboxOpen.value = false
+  lightboxAttachmentId.value = null
+  lightboxZoomed.value = false
+}
+
+function showPreviousImage() {
+  if (!draft.value?.attachments.length) return
+  const current = lightboxIndex.value
+  const next = current <= 0 ? draft.value.attachments.length - 1 : current - 1
+  lightboxAttachmentId.value = draft.value.attachments[next].id
+  lightboxZoomed.value = false
+}
+
+function showNextImage() {
+  if (!draft.value?.attachments.length) return
+  const current = lightboxIndex.value
+  const next = current < 0 || current >= draft.value.attachments.length - 1 ? 0 : current + 1
+  lightboxAttachmentId.value = draft.value.attachments[next].id
+  lightboxZoomed.value = false
+}
+
+function handleLightboxKeydown(event: KeyboardEvent) {
+  if (!lightboxOpen.value) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeLightbox()
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    showPreviousImage()
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    showNextImage()
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleLightboxKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleLightboxKeydown))
+
+watch(() => draft.value?.attachments.map(attachment => attachment.id).join('|'), () => {
+  if (lightboxOpen.value && !lightboxAttachment.value) closeLightbox()
+})
+
 function attachmentDataUrl(attachment: JournalAttachment): string {
   return `data:${attachment.mimeType};base64,${attachment.base64}`
 }
@@ -600,7 +715,7 @@ function newEntry(type: EntryType) {
   saveError.value = null
 }
 
-function cancelEdit() { selected.value = null; draft.value = null; isNew.value = false; saveError.value = null }
+function cancelEdit() { closeLightbox(); selected.value = null; draft.value = null; isNew.value = false; saveError.value = null }
 
 async function save() {
   if (!draft.value) return
@@ -672,7 +787,17 @@ button,input,select,textarea { font: inherit; color: inherit; } button { cursor:
 .content { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(310px, 38%) minmax(420px, 1fr); }.list-pane { min-width: 0; border-right: 1px solid var(--oc-role-outline-variant, #dfe3e8); overflow-y: auto; background: var(--oc-role-surface, #fff); }.pane-header { position: sticky; top: 0; z-index: 2; padding: 20px; border-bottom: 1px solid var(--oc-role-outline-variant, #e3e7ec); background: inherit; }
 .sort-control { width: min(230px, 48%); font-size: 12px; font-weight: 500; }.sort-control select { padding: 8px 34px 8px 10px; background: var(--oc-role-surface, #fff); }
 .entry-card { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--oc-role-outline-variant, #edf0f2); padding: 16px 20px; background: transparent; cursor: pointer; }.entry-card:hover,.entry-card.selected { background: var(--oc-role-surface-container-low, #f4f6f8); }.entry-card.selected { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-card.pinned { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--oc-role-primary, #0069a8) 65%, #f5b700); }.entry-card.selected.pinned { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-topline { margin-bottom: 6px; }.entry-meta { display: flex; align-items: center; gap: 7px; min-width: 0; }.pin-button { border: 0; background: transparent; border-radius: 6px; padding: 2px 4px; line-height: 1; font-size: 14px; opacity: .42; }.pin-button:hover,.pin-button.active { opacity: 1; background: var(--oc-role-surface-container, #eef2f6); }.type-badge { font-size: 11px; font-weight: 650; }.entry-date { font-size: 11px; opacity: .62; }.entry-card p { margin-top: 6px; font-size: 13px; opacity: .75; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }.task-progress { font-size: 11px; opacity: .65; margin-top: 8px; }.tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }.tags span { background: var(--oc-role-surface-container-high, #e9edf1); border-radius: 999px; padding: 2px 7px; font-size: 10px; }
-.editor-pane { overflow: auto; min-width: 0; }.editor { min-height: 100%; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; max-width: 960px; margin: 0 auto; }.editor-header { padding-bottom: 16px; border-bottom: 1px solid var(--oc-role-outline-variant, #dfe3e8); }.editor label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }.editor label small { font-weight: 400; opacity: .6; }.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.task-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }.description-field { flex: 1; min-height: 300px; }.description-field textarea { flex: 1; min-height: 360px; resize: vertical; line-height: 1.6; font-family: inherit; }.attachments-section { display: grid; gap: 12px; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 16px; }.attachments-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }.attachments-header strong,.attachments-header small { display: block; }.attachments-header small { margin-top: 3px; opacity: .6; font-size: 11px; }.attachment-upload { display: inline-flex !important; flex-direction: row !important; align-items: center; width: auto; cursor: pointer; }.attachment-upload input { display: none; }.attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }.attachment-card { margin: 0; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); border-radius: 10px; overflow: hidden; background: var(--oc-role-surface, #fff); }.attachment-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--oc-role-surface-container-low, #f4f6f8); }.attachment-card figcaption { display: grid; gap: 4px; padding: 9px; }.attachment-card figcaption span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }.attachment-card figcaption small { opacity: .58; font-size: 10px; }.attachment-remove { justify-self: start; padding: 5px 8px; margin-top: 3px; font-size: 11px; }.attachment-empty { font-size: 12px; opacity: .55; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
+.editor-pane { overflow: auto; min-width: 0; }.editor { min-height: 100%; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; max-width: 960px; margin: 0 auto; }.editor-header { padding-bottom: 16px; border-bottom: 1px solid var(--oc-role-outline-variant, #dfe3e8); }.editor label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }.editor label small { font-weight: 400; opacity: .6; }.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.task-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }.description-field { flex: 1; min-height: 300px; }.description-field textarea { flex: 1; min-height: 360px; resize: vertical; line-height: 1.6; font-family: inherit; }.attachments-section { display: grid; gap: 12px; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 16px; }.attachments-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }.attachments-header strong,.attachments-header small { display: block; }.attachments-header small { margin-top: 3px; opacity: .6; font-size: 11px; }.attachment-upload { display: inline-flex !important; flex-direction: row !important; align-items: center; width: auto; cursor: pointer; }.attachment-upload input { display: none; }.attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }.attachment-card { margin: 0; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); border-radius: 10px; overflow: hidden; background: var(--oc-role-surface, #fff); }.attachment-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--oc-role-surface-container-low, #f4f6f8); }.attachment-preview-button { display: block; width: 100%; border: 0; padding: 0; background: transparent; cursor: zoom-in; }.attachment-preview-button:hover img { filter: brightness(.96); }
+.lightbox-backdrop { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.88); display: flex; align-items: stretch; justify-content: stretch; }
+.lightbox-shell { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.lightbox-toolbar { position: absolute; z-index: 4; top: 0; left: 0; right: 0; min-height: 58px; padding: 10px 14px 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #fff; background: linear-gradient(to bottom, rgba(0,0,0,.72), transparent); }
+.lightbox-meta { min-width: 0; display: flex; align-items: baseline; gap: 12px; }.lightbox-meta strong { max-width: min(70vw, 760px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.lightbox-meta span { opacity: .72; font-size: 12px; white-space: nowrap; }
+.lightbox-close,.lightbox-nav { border: 0; color: #fff; background: rgba(20,20,20,.55); backdrop-filter: blur(6px); border-radius: 999px; }.lightbox-close { width: 40px; height: 40px; font-size: 20px; }.lightbox-close:hover,.lightbox-nav:hover { background: rgba(50,50,50,.82); }
+.lightbox-nav { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; font-size: 38px; line-height: 1; }.lightbox-prev { left: 14px; }.lightbox-next { right: 14px; }
+.lightbox-image-button { max-width: 100%; max-height: 100%; width: 100%; height: 100%; border: 0; padding: 72px 74px 36px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: zoom-in; overflow: auto; }
+.lightbox-image-button img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.lightbox-image-button.zoomed { align-items: flex-start; justify-content: flex-start; cursor: zoom-out; }.lightbox-image-button img.zoomed { max-width: none; max-height: none; width: auto; height: auto; margin: auto; }
+@media (max-width: 700px) { .lightbox-image-button { padding: 68px 8px 22px; }.lightbox-nav { width: 42px; height: 42px; font-size: 32px; }.lightbox-prev { left: 8px; }.lightbox-next { right: 8px; }.lightbox-meta strong { max-width: 56vw; } }.attachment-card figcaption { display: grid; gap: 4px; padding: 9px; }.attachment-card figcaption span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }.attachment-card figcaption small { opacity: .58; font-size: 10px; }.attachment-remove { justify-self: start; padding: 5px 8px; margin-top: 3px; font-size: 11px; }.attachment-empty { font-size: 12px; opacity: .55; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
 .empty-state,.editor-placeholder { min-height: 280px; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center; opacity: .62; padding: 30px; }.editor-placeholder { height: 100%; min-height: 500px; }.empty-icon { font-size: 38px; opacity: .45; }.spinner { width: 22px; height: 22px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }.spinning { animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 20px; }.type-picker { width: min(520px, 100%); background: var(--oc-role-surface, #fff); border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.28); padding: 18px; display: grid; gap: 8px; }.type-picker header { padding: 2px 2px 10px; }.type-choice { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; width: 100%; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); background: transparent; border-radius: 10px; padding: 14px; text-align: left; }.type-choice:hover { background: var(--oc-role-surface-container-low, #f4f6f8); border-color: var(--oc-role-primary, #0069a8); }.choice-icon { font-size: 25px; }.type-choice strong,.type-choice small { display: block; }.type-choice small { margin-top: 3px; opacity: .65; line-height: 1.35; }
 @media (max-width: 900px) { .sort-control { width: min(210px, 50%); } .sidebar { width: 225px; flex-basis: 225px; }.content { grid-template-columns: 1fr; }.editor-pane { position: fixed; inset: 52px 0 0 225px; z-index: 10; background: var(--oc-role-background, #f7f8fa); }.editor-pane:has(.editor-placeholder) { display: none; }.task-fields { grid-template-columns: 1fr; } }
