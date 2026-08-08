@@ -200,4 +200,5 @@ export function useI18n() {
   }
 
   return { t, isGerman, localeTag }
+  'Contains image attachment': 'Enthält Bildanhang',
 }

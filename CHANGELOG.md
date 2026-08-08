@@ -1,3 +1,7 @@
+## 0.3.2
+
+- Added a paperclip indicator next to the pin icon for entries that contain one or more image attachments.
+
 ## 0.3.1
 
 - Reworked the image lightbox into a zoomable image viewer.
