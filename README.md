@@ -91,7 +91,7 @@ The original repository is licensed under the GNU Affero General Public License 
 
 ## jtxBoard compatibility via DAVx5
 
-The app mirrors the three jtxBoard entry classes over CalDAV (but it should work with other Apps/Programs that support these collection classes:
+The app mirrors the three jtxBoard entry classes over CalDAV (but it should work with other Apps/Programs that support these collection classes):
 
 - **Journal**: `VJOURNAL` with `DTSTART`
 - **Note**: `VJOURNAL` without `DTSTART`
