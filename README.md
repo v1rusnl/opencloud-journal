@@ -80,6 +80,20 @@ END:VCALENDAR
 
 The app intentionally keeps the first version focused on interoperable RFC 5545 fields.
 
+## Image attachments
+
+Journal, note and task entries can contain images embedded directly in the iCalendar object using the same Base64 `ATTACH` format used by jtxBoard.
+
+Supported image formats:
+
+- JPEG / JPG
+- PNG
+- WebP
+
+The application detects the actual image format from the file contents. Existing supported image attachments can be previewed or removed, and new images can be added from the editor.
+
+Because images are stored inside the `.ics` object, large images also increase the size of the CalDAV item.
+
 ## Notes
 
 Some CalDAV servers expose collections that reject `VJOURNAL` queries. Those collections are skipped while other collections remain usable. If a resource changes in another client after it was loaded, save/delete will fail with HTTP 412 instead of silently overwriting the newer version.
@@ -106,18 +120,3 @@ Special thanks to FrankM from https://linux-nerds.org/topic/1850/opencloud-mein-
 ## Disclaimer
 
 AI (GPT5.5) was used to support the building process of this app.
-
-
-## Image attachments
-
-Journal, note and task entries can contain images embedded directly in the iCalendar object using the same Base64 `ATTACH` format used by jtxBoard.
-
-Supported image formats:
-
-- JPEG / JPG
-- PNG
-- WebP
-
-The application detects the actual image format from the file contents. Existing supported image attachments can be previewed or removed, and new images can be added from the editor.
-
-Because images are stored inside the `.ics` object, large images also increase the size of the CalDAV item.
