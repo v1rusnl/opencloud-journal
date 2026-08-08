@@ -11,6 +11,13 @@ export interface JournalCollection {
   components: string[]
 }
 
+export interface JournalAttachment {
+  id: string
+  filename: string
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  base64: string
+}
+
 export interface JournalEntry {
   uid: string
   type: EntryType
@@ -30,6 +37,7 @@ export interface JournalEntry {
   etag?: string
   created?: Date
   lastModified?: Date
+  attachments: JournalAttachment[]
   /** Original server payload so updates can preserve jtxBoard/DAVx5-specific properties. */
   rawIcs?: string
 }
@@ -86,11 +94,115 @@ function numericProperty(component: ICAL.Component, name: string): number | unde
   return Number.isFinite(value) ? value : undefined
 }
 
+const SUPPORTED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+function base64PrefixBytes(data: string, maxBytes = 16): number[] {
+  try {
+    const clean = data.replace(/\s+/g, '')
+    if (typeof atob === 'function') {
+      const decoded = atob(clean.slice(0, Math.ceil(maxBytes / 3) * 4))
+      return Array.from(decoded.slice(0, maxBytes), ch => ch.charCodeAt(0))
+    }
+  } catch {
+    // malformed base64
+  }
+  return []
+}
+
+export function detectImageMimeType(base64: string): JournalAttachment['mimeType'] | undefined {
+  const b = base64PrefixBytes(base64, 16)
+  if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a) return 'image/png'
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'
+  if (b.length >= 12 && String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP') return 'image/webp'
+  return undefined
+}
+
+function unquoteParam(value: string): string {
+  const trimmed = value.trim()
+  return trimmed.startsWith('"') && trimmed.endsWith('"') ? trimmed.slice(1, -1).replace(/\\"/g, '"') : trimmed
+}
+
+function parseAttachLine(line: string): JournalAttachment | null {
+  const colon = line.indexOf(':')
+  if (colon < 0) return null
+  const head = line.slice(0, colon)
+  if (!/^ATTACH(?:;|$)/i.test(head)) return null
+
+  const params = new Map<string, string>()
+  for (const segment of head.split(';').slice(1)) {
+    const eq = segment.indexOf('=')
+    if (eq > 0) params.set(segment.slice(0, eq).toUpperCase(), unquoteParam(segment.slice(eq + 1)))
+  }
+
+  if ((params.get('VALUE') || '').toUpperCase() !== 'BINARY') return null
+  if ((params.get('ENCODING') || '').toUpperCase() !== 'BASE64') return null
+
+  const data = line.slice(colon + 1).replace(/\s+/g, '')
+  const detected = detectImageMimeType(data)
+  const declared = (params.get('FMTTYPE') || '').toLowerCase()
+  const mimeType = detected ?? (SUPPORTED_IMAGE_MIME_TYPES.has(declared) ? declared as JournalAttachment['mimeType'] : undefined)
+  if (!mimeType) return null
+
+  const filename = params.get('FILENAME') || params.get('X-LABEL') || `image.${mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg'}`
+  return { id: `${filename}:${data.slice(0, 24)}`, filename, mimeType, base64: data }
+}
+
+function attachmentsFromRawIcs(icsText: string, componentName: 'VJOURNAL' | 'VTODO', uid: string): JournalAttachment[] {
+  const lines = icsText.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)
+  let inside = false
+  let matchesUid = false
+  const candidateLines: string[] = []
+
+  for (const line of lines) {
+    if (line.toUpperCase() === `BEGIN:${componentName}`) {
+      inside = true
+      matchesUid = false
+      candidateLines.length = 0
+      continue
+    }
+    if (inside && line.toUpperCase() === `END:${componentName}`) {
+      if (matchesUid) return candidateLines.map(parseAttachLine).filter((a): a is JournalAttachment => !!a)
+      inside = false
+      continue
+    }
+    if (!inside) continue
+    if (/^UID:/i.test(line) && line.slice(line.indexOf(':') + 1) === uid) matchesUid = true
+    if (/^ATTACH(?:;|:)/i.test(line)) candidateLines.push(line)
+  }
+  return []
+}
+
+function escapeParamValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]/g, ' ')}"`
+}
+
+function foldIcsLine(line: string, width = 74): string {
+  if (line.length <= width) return line
+  const chunks: string[] = []
+  let rest = line
+  while (rest.length > width) {
+    chunks.push(rest.slice(0, width))
+    rest = rest.slice(width)
+  }
+  chunks.push(rest)
+  return chunks.join('\r\n ')
+}
+
+function buildAttachmentLine(attachment: JournalAttachment): string {
+  const mimeType = detectImageMimeType(attachment.base64) ?? attachment.mimeType
+  const filename = attachment.filename || `image.${mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg'}`
+  return foldIcsLine(`ATTACH;ENCODING=BASE64;VALUE=BINARY;FMTTYPE=${mimeType};X-LABEL=${escapeParamValue(filename)};FILENAME=${escapeParamValue(filename)}:${attachment.base64.replace(/\s+/g, '')}`)
+}
+
+function isManagedImageAttachLine(line: string): boolean {
+  return !!parseAttachLine(line)
+}
+
 export function escapeIcs(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
 }
 
-function patchExistingIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | 'description' | 'date' | 'due' | 'categories' | 'status' | 'percentComplete' | 'priority' | 'rawIcs'>): string | null {
+function patchExistingIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | 'description' | 'date' | 'due' | 'categories' | 'status' | 'percentComplete' | 'priority' | 'attachments' | 'rawIcs'>): string | null {
   if (!entry.rawIcs) return null
   const expected = entry.type === 'task' ? 'VTODO' : 'VJOURNAL'
   // Unfold first so a removed DESCRIPTION/SUMMARY cannot leave continuation lines behind.
@@ -102,6 +214,7 @@ function patchExistingIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | '
   const replaceNames = new Set(['DTSTAMP', 'DTSTART', 'DUE', 'SUMMARY', 'DESCRIPTION', 'CATEGORIES', 'STATUS', 'PERCENT-COMPLETE', 'PRIORITY'])
   const kept = lines.slice(begin + 1, end).filter(line => {
     const name = line.split(/[;:]/, 1)[0].toUpperCase()
+    if (name === 'ATTACH' && isManagedImageAttachLine(line)) return false
     return !replaceNames.has(name)
   })
   const now = new Date()
@@ -119,11 +232,12 @@ function patchExistingIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | '
   } else if (entry.status) {
     managed.push(`STATUS:${entry.status}`)
   }
+  for (const attachment of entry.attachments ?? []) managed.push(buildAttachmentLine(attachment))
 
   return [...lines.slice(0, begin + 1), ...managed, ...kept, ...lines.slice(end)].filter((line, idx, arr) => !(idx === arr.length - 1 && line === '')).join('\r\n') + '\r\n'
 }
 
-export function buildEntryIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | 'description' | 'date' | 'due' | 'categories' | 'status' | 'percentComplete' | 'priority' | 'rawIcs'>): string {
+export function buildEntryIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title' | 'description' | 'date' | 'due' | 'categories' | 'status' | 'percentComplete' | 'priority' | 'attachments' | 'rawIcs'>): string {
   const patched = patchExistingIcs(entry)
   if (patched) return patched
   const now = new Date()
@@ -156,6 +270,7 @@ export function buildEntryIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title'
   } else if (entry.status) {
     lines.push(`STATUS:${entry.status}`)
   }
+  for (const attachment of entry.attachments ?? []) lines.push(buildAttachmentLine(attachment))
 
   lines.push(`END:${componentName}`, 'END:VCALENDAR')
   return lines.join('\r\n') + '\r\n'
@@ -163,7 +278,7 @@ export function buildEntryIcs(entry: Pick<JournalEntry, 'uid' | 'type' | 'title'
 
 /** Backwards-compatible helper used by older tests/integrations. */
 export function buildJournalIcs(entry: Pick<JournalEntry, 'uid' | 'title' | 'description' | 'date' | 'categories' | 'status'>): string {
-  return buildEntryIcs({ ...entry, type: 'journal' })
+  return buildEntryIcs({ ...entry, type: 'journal', attachments: [] })
 }
 
 function categoriesFrom(component: ICAL.Component): string[] {
@@ -209,6 +324,7 @@ export function parseEntries(icsText: string, resourceHref: string, collectionHr
           etag: normalizeEtag(etag),
           created: timeToDate(component.getFirstPropertyValue('created')),
           lastModified: timeToDate(component.getFirstPropertyValue('last-modified')),
+          attachments: attachmentsFromRawIcs(icsText, componentName === 'vtodo' ? 'VTODO' : 'VJOURNAL', uid),
           rawIcs: icsText,
         })
       } catch {

@@ -203,6 +203,31 @@
             <textarea v-model="draft.description" :placeholder="descriptionPlaceholder" />
           </label>
 
+          <section class="attachments-section">
+            <div class="attachments-header">
+              <div>
+                <strong>{{ t('Images') }}</strong>
+                <small>{{ t('JPG, PNG or WebP images are embedded in the CalDAV item.') }}</small>
+              </div>
+              <label class="secondary attachment-upload">
+                ＋ {{ t('Add image') }}
+                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple @change="addImages" />
+              </label>
+            </div>
+
+            <div v-if="draft.attachments.length" class="attachment-grid">
+              <figure v-for="attachment in draft.attachments" :key="attachment.id" class="attachment-card">
+                <img :src="attachmentDataUrl(attachment)" :alt="attachment.filename" />
+                <figcaption>
+                  <span :title="attachment.filename">{{ attachment.filename }}</span>
+                  <small>{{ attachment.mimeType }}</small>
+                  <button type="button" class="danger attachment-remove" @click="removeAttachment(attachment.id)">{{ t('Remove') }}</button>
+                </figcaption>
+              </figure>
+            </div>
+            <p v-else class="attachment-empty">{{ t('No images attached.') }}</p>
+          </section>
+
           <footer v-if="!isNew" class="metadata">
             <span>UID: {{ draft.uid }}</span>
             <span v-if="draft.etag">ETag: {{ draft.etag }}</span>
@@ -239,7 +264,7 @@
 import { computed, ref, watch } from 'vue'
 import { useJournal } from '@/composables/useJournal'
 import { useI18n } from '@/composables/useI18n'
-import type { EntryType, JournalCollection, JournalEntry } from '@/services/journal'
+import { detectImageMimeType, type EntryType, type JournalAttachment, type JournalCollection, type JournalEntry } from '@/services/journal'
 
 const { t, localeTag } = useI18n()
 const { loading, error, collections, entries, activeCollectionHref, load, createEntry, updateEntry, deleteEntry, createCollection } = useJournal()
@@ -363,7 +388,7 @@ watch(sortMode, value => {
 })
 
 watch(activeCollectionHref, () => {
-  if (!showAllCollections.value && selected.value && selected.value.collectionHref !== activeCollectionHref.value) cancelEdit()
+  if (selected.value && activeCollectionHref.value && selected.value.collectionHref !== activeCollectionHref.value) cancelEdit()
 })
 
 function entryStorageKey(entry: JournalEntry): string {
@@ -492,10 +517,62 @@ function displayDate(entry: JournalEntry): string {
 }
 function toInputDate(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
 function fromInputDate(value: string): Date { const [y, m, d] = value.split('-').map(Number); return new Date(y, m - 1, d) }
-function cloneEntry(entry: JournalEntry): JournalEntry { return { ...entry, date: entry.date ? new Date(entry.date) : undefined, due: entry.due ? new Date(entry.due) : undefined, categories: [...entry.categories] } }
+function cloneEntry(entry: JournalEntry): JournalEntry { return { ...entry, date: entry.date ? new Date(entry.date) : undefined, due: entry.due ? new Date(entry.due) : undefined, categories: [...entry.categories], attachments: (entry.attachments ?? []).map(a => ({ ...a })) } }
 function typeIcon(type: EntryType): string { return type === 'task' ? '☑' : type === 'note' ? '📝' : '📔' }
 function typeLabel(type: EntryType): string { return type === 'task' ? 'Task' : type === 'note' ? 'Note' : 'Journal entry' }
 function taskStatusLabel(status?: string): string { return status === 'COMPLETED' ? 'Completed' : status === 'IN-PROCESS' ? 'In progress' : status === 'CANCELLED' ? 'Cancelled' : 'Open' }
+
+
+function attachmentDataUrl(attachment: JournalAttachment): string {
+  return `data:${attachment.mimeType};base64,${attachment.base64}`
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error ?? new Error(t('Could not read image.')))
+    reader.onload = () => {
+      const result = String(reader.result ?? '')
+      const comma = result.indexOf(',')
+      if (comma < 0) return reject(new Error(t('Could not read image.')))
+      resolve(result.slice(comma + 1))
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+async function addImages(event: Event) {
+  if (!draft.value) return
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+
+  for (const file of files) {
+    try {
+      const base64 = await fileToBase64(file)
+      const mimeType = detectImageMimeType(base64)
+      if (!mimeType) {
+        saveError.value = t('Only JPG, PNG and WebP images are supported.')
+        continue
+      }
+
+      draft.value.attachments.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        filename: file.name || `image.${mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg'}`,
+        mimeType,
+        base64,
+      })
+      saveError.value = null
+    } catch (e: unknown) {
+      saveError.value = e instanceof Error ? e.message : String(e)
+    }
+  }
+}
+
+function removeAttachment(id: string) {
+  if (!draft.value) return
+  draft.value.attachments = draft.value.attachments.filter(attachment => attachment.id !== id)
+}
 
 function selectEntry(entry: JournalEntry) {
   selected.value = entry
@@ -517,7 +594,7 @@ function newEntry(type: EntryType) {
     uid: '', type, title: '', description: '', date: type === 'journal' ? new Date() : undefined, due: undefined,
     categories: [], status: type === 'task' ? 'NEEDS-ACTION' : undefined,
     percentComplete: type === 'task' ? 0 : undefined, priority: type === 'task' ? 0 : undefined,
-    collectionHref: collection.href, resourceHref: '',
+    collectionHref: collection.href, resourceHref: '', attachments: [],
   }
   isNew.value = true
   saveError.value = null
@@ -595,7 +672,7 @@ button,input,select,textarea { font: inherit; color: inherit; } button { cursor:
 .content { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(310px, 38%) minmax(420px, 1fr); }.list-pane { min-width: 0; border-right: 1px solid var(--oc-role-outline-variant, #dfe3e8); overflow-y: auto; background: var(--oc-role-surface, #fff); }.pane-header { position: sticky; top: 0; z-index: 2; padding: 20px; border-bottom: 1px solid var(--oc-role-outline-variant, #e3e7ec); background: inherit; }
 .sort-control { width: min(230px, 48%); font-size: 12px; font-weight: 500; }.sort-control select { padding: 8px 34px 8px 10px; background: var(--oc-role-surface, #fff); }
 .entry-card { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--oc-role-outline-variant, #edf0f2); padding: 16px 20px; background: transparent; cursor: pointer; }.entry-card:hover,.entry-card.selected { background: var(--oc-role-surface-container-low, #f4f6f8); }.entry-card.selected { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-card.pinned { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--oc-role-primary, #0069a8) 65%, #f5b700); }.entry-card.selected.pinned { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-topline { margin-bottom: 6px; }.entry-meta { display: flex; align-items: center; gap: 7px; min-width: 0; }.pin-button { border: 0; background: transparent; border-radius: 6px; padding: 2px 4px; line-height: 1; font-size: 14px; opacity: .42; }.pin-button:hover,.pin-button.active { opacity: 1; background: var(--oc-role-surface-container, #eef2f6); }.type-badge { font-size: 11px; font-weight: 650; }.entry-date { font-size: 11px; opacity: .62; }.entry-card p { margin-top: 6px; font-size: 13px; opacity: .75; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }.task-progress { font-size: 11px; opacity: .65; margin-top: 8px; }.tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }.tags span { background: var(--oc-role-surface-container-high, #e9edf1); border-radius: 999px; padding: 2px 7px; font-size: 10px; }
-.editor-pane { overflow: auto; min-width: 0; }.editor { min-height: 100%; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; max-width: 960px; margin: 0 auto; }.editor-header { padding-bottom: 16px; border-bottom: 1px solid var(--oc-role-outline-variant, #dfe3e8); }.editor label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }.editor label small { font-weight: 400; opacity: .6; }.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.task-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }.description-field { flex: 1; min-height: 300px; }.description-field textarea { flex: 1; min-height: 360px; resize: vertical; line-height: 1.6; font-family: inherit; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
+.editor-pane { overflow: auto; min-width: 0; }.editor { min-height: 100%; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; max-width: 960px; margin: 0 auto; }.editor-header { padding-bottom: 16px; border-bottom: 1px solid var(--oc-role-outline-variant, #dfe3e8); }.editor label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }.editor label small { font-weight: 400; opacity: .6; }.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.task-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }.description-field { flex: 1; min-height: 300px; }.description-field textarea { flex: 1; min-height: 360px; resize: vertical; line-height: 1.6; font-family: inherit; }.attachments-section { display: grid; gap: 12px; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 16px; }.attachments-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }.attachments-header strong,.attachments-header small { display: block; }.attachments-header small { margin-top: 3px; opacity: .6; font-size: 11px; }.attachment-upload { display: inline-flex !important; flex-direction: row !important; align-items: center; width: auto; cursor: pointer; }.attachment-upload input { display: none; }.attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }.attachment-card { margin: 0; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); border-radius: 10px; overflow: hidden; background: var(--oc-role-surface, #fff); }.attachment-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--oc-role-surface-container-low, #f4f6f8); }.attachment-card figcaption { display: grid; gap: 4px; padding: 9px; }.attachment-card figcaption span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }.attachment-card figcaption small { opacity: .58; font-size: 10px; }.attachment-remove { justify-self: start; padding: 5px 8px; margin-top: 3px; font-size: 11px; }.attachment-empty { font-size: 12px; opacity: .55; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
 .empty-state,.editor-placeholder { min-height: 280px; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center; opacity: .62; padding: 30px; }.editor-placeholder { height: 100%; min-height: 500px; }.empty-icon { font-size: 38px; opacity: .45; }.spinner { width: 22px; height: 22px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }.spinning { animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 20px; }.type-picker { width: min(520px, 100%); background: var(--oc-role-surface, #fff); border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.28); padding: 18px; display: grid; gap: 8px; }.type-picker header { padding: 2px 2px 10px; }.type-choice { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; width: 100%; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); background: transparent; border-radius: 10px; padding: 14px; text-align: left; }.type-choice:hover { background: var(--oc-role-surface-container-low, #f4f6f8); border-color: var(--oc-role-primary, #0069a8); }.choice-icon { font-size: 25px; }.type-choice strong,.type-choice small { display: block; }.type-choice small { margin-top: 3px; opacity: .65; line-height: 1.35; }
 @media (max-width: 900px) { .sort-control { width: min(210px, 50%); } .sidebar { width: 225px; flex-basis: 225px; }.content { grid-template-columns: 1fr; }.editor-pane { position: fixed; inset: 52px 0 0 225px; z-index: 10; background: var(--oc-role-background, #f7f8fa); }.editor-pane:has(.editor-placeholder) { display: none; }.task-fields { grid-template-columns: 1fr; } }

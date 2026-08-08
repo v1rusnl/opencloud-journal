@@ -1,3 +1,12 @@
+## 0.3.1
+
+- Added jtxBoard-compatible embedded image attachments for journals, notes and tasks.
+- Parses `ATTACH;ENCODING=BASE64;VALUE=BINARY` images.
+- Added image previews, image upload and image removal in the editor.
+- Supports JPEG/JPG, PNG and WebP.
+- Detects the real image format from magic bytes instead of trusting only `FMTTYPE` or the filename.
+- Preserves unsupported/non-image ATTACH properties while editing existing entries.
+
 ## 0.2.9
 
 - Navigation der Seitenleiste auf Sammlung → Inhaltstyp umgestellt.

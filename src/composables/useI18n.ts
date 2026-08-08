@@ -81,6 +81,13 @@ const translations: Record<string, string> = {
   'A journal entry needs a date.': 'Ein Journal-Eintrag benötigt ein Datum.',
   'No collection supports VTODO.': 'Keine Sammlung unterstützt VTODO.',
   'No collection supports VJOURNAL.': 'Keine Sammlung unterstützt VJOURNAL.',
+  'Images': 'Bilder',
+  'Add image': 'Bild hinzufügen',
+  'Remove': 'Entfernen',
+  'No images attached.': 'Keine Bilder angehängt.',
+  'JPG, PNG or WebP images are embedded in the CalDAV item.': 'JPG-, PNG- oder WebP-Bilder werden direkt in den CalDAV-Eintrag eingebettet.',
+  'Only JPG, PNG and WebP images are supported.': 'Es werden nur JPG-, PNG- und WebP-Bilder unterstützt.',
+  'Could not read image.': 'Das Bild konnte nicht gelesen werden.',
   // CalendarView
   'Agenda': 'Termine',
   '+ New': '+ Neu',
