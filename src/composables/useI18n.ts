@@ -89,6 +89,7 @@ const translations: Record<string, string> = {
   'Only JPG, PNG and WebP images are supported.': 'Es werden nur JPG-, PNG- und WebP-Bilder unterstützt.',
   'Could not read image.': 'Das Bild konnte nicht gelesen werden.',
   'Open image': 'Bild öffnen',
+  'Contains image attachment': 'Enthält Bildanhang',
   'Image preview': 'Bildvorschau',
   'Close': 'Schließen',
   'Previous image': 'Vorheriges Bild',
@@ -200,5 +201,4 @@ export function useI18n() {
   }
 
   return { t, isGerman, localeTag }
-  'Contains image attachment': 'Enthält Bildanhang',
 }
