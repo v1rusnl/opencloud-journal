@@ -1,4 +1,4 @@
-## 0.3.3
+## 0.3.1
 
 - Reworked the image lightbox into a zoomable image viewer.
 - Mouse wheel zoom from 25% to 500%.
@@ -7,17 +7,11 @@
 - Enlarged images can be dragged/panned with the mouse.
 - Double-click toggles between fit-to-screen and 100% actual size.
 - Keyboard shortcuts: + / - zoom, 0 fits the image, Escape closes, Left/Right switch images.
-
-## 0.3.2
-
 - Added a built-in lightbox for image attachments.
 - Click a thumbnail to open the image in a full-screen preview.
 - Added previous/next navigation for entries with multiple images.
 - Added keyboard controls: Escape closes, Left/Right switch images.
 - Clicking the large image toggles between fit-to-screen and original-size view.
-
-## 0.3.1
-
 - Added jtxBoard-compatible embedded image attachments for journals, notes and tasks.
 - Parses `ATTACH;ENCODING=BASE64;VALUE=BINARY` images.
 - Added image previews, image upload and image removal in the editor.
