@@ -95,6 +95,9 @@ const translations: Record<string, string> = {
   'Next image': 'Nächstes Bild',
   'Fit image to screen': 'Bild an Bildschirm anpassen',
   'Show image at full size': 'Bild in Originalgröße anzeigen',
+  'Zoom in': 'Vergrößern',
+  'Zoom out': 'Verkleinern',
+  'Fit': 'Anpassen',
   // CalendarView
   'Agenda': 'Termine',
   '+ New': '+ Neu',

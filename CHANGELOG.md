@@ -1,3 +1,13 @@
+## 0.3.3
+
+- Reworked the image lightbox into a zoomable image viewer.
+- Mouse wheel zoom from 25% to 500%.
+- Added zoom in/out buttons and a live percentage indicator.
+- Added a Fit button to return to fit-to-screen mode.
+- Enlarged images can be dragged/panned with the mouse.
+- Double-click toggles between fit-to-screen and 100% actual size.
+- Keyboard shortcuts: + / - zoom, 0 fits the image, Escape closes, Left/Right switch images.
+
 ## 0.3.2
 
 - Added a built-in lightbox for image attachments.

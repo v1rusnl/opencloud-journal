@@ -2,5 +2,5 @@
   "id": "journal",
   "name": "Journal",
   "description": "Journal, notes and tasks for OpenCloud via CalDAV (jtxBoard compatible)",
-  "version": "0.3.2"
+  "version": "0.3.3"
 }

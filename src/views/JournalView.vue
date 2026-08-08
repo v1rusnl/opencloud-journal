@@ -265,19 +265,31 @@
           @click="showPreviousImage"
         >‹</button>
 
-        <button
-          type="button"
-          class="lightbox-image-button"
-          :class="{ zoomed: lightboxZoomed }"
-          :title="lightboxZoomed ? t('Fit image to screen') : t('Show image at full size')"
-          @click="lightboxZoomed = !lightboxZoomed"
+        <div class="lightbox-zoom-controls" @click.stop>
+          <button type="button" :title="t('Zoom out')" :aria-label="t('Zoom out')" @click="zoomOut">−</button>
+          <span>{{ Math.round(lightboxScale * 100) }}%</span>
+          <button type="button" :title="t('Zoom in')" :aria-label="t('Zoom in')" @click="zoomIn">＋</button>
+          <button type="button" class="fit-button" @click="fitImage">{{ t('Fit') }}</button>
+        </div>
+
+        <div
+          class="lightbox-viewport"
+          :class="{ dragging: lightboxDragging, pannable: !lightboxFit || lightboxScale > 1 }"
+          @wheel.prevent="handleLightboxWheel"
+          @mousedown="startLightboxPan"
+          @mousemove="moveLightboxPan"
+          @mouseup="endLightboxPan"
+          @mouseleave="endLightboxPan"
+          @dblclick.prevent="toggleFitAndActualSize"
         >
           <img
             :src="attachmentDataUrl(lightboxAttachment)"
             :alt="lightboxAttachment.filename"
-            :class="{ zoomed: lightboxZoomed }"
+            :class="{ fitted: lightboxFit }"
+            :style="lightboxImageStyle"
+            draggable="false"
           />
-        </button>
+        </div>
 
         <button
           v-if="(draft?.attachments.length ?? 0) > 1"
@@ -333,7 +345,15 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 const lightboxOpen = ref(false)
 const lightboxAttachmentId = ref<string | null>(null)
-const lightboxZoomed = ref(false)
+const lightboxScale = ref(1)
+const lightboxFit = ref(true)
+const lightboxOffsetX = ref(0)
+const lightboxOffsetY = ref(0)
+const lightboxDragging = ref(false)
+const lightboxDragStartX = ref(0)
+const lightboxDragStartY = ref(0)
+const lightboxDragOriginX = ref(0)
+const lightboxDragOriginY = ref(0)
 
 const lightboxIndex = computed(() => {
   if (!draft.value || !lightboxAttachmentId.value) return -1
@@ -343,6 +363,13 @@ const lightboxIndex = computed(() => {
 const lightboxAttachment = computed(() => {
   const index = lightboxIndex.value
   return draft.value && index >= 0 ? draft.value.attachments[index] : null
+})
+
+const lightboxImageStyle = computed(() => {
+  if (lightboxFit.value) return {}
+  return {
+    transform: `translate(${lightboxOffsetX.value}px, ${lightboxOffsetY.value}px) scale(${lightboxScale.value})`,
+  }
 })
 
 type SortMode = 'title-asc' | 'title-desc' | 'created-asc' | 'created-desc'
@@ -589,16 +616,24 @@ function typeLabel(type: EntryType): string { return type === 'task' ? 'Task' : 
 function taskStatusLabel(status?: string): string { return status === 'COMPLETED' ? 'Completed' : status === 'IN-PROCESS' ? 'In progress' : status === 'CANCELLED' ? 'Cancelled' : 'Open' }
 
 
+function resetLightboxView() {
+  lightboxScale.value = 1
+  lightboxFit.value = true
+  lightboxOffsetX.value = 0
+  lightboxOffsetY.value = 0
+  lightboxDragging.value = false
+}
+
 function openLightbox(attachmentId: string) {
   lightboxAttachmentId.value = attachmentId
-  lightboxZoomed.value = false
+  resetLightboxView()
   lightboxOpen.value = true
 }
 
 function closeLightbox() {
   lightboxOpen.value = false
   lightboxAttachmentId.value = null
-  lightboxZoomed.value = false
+  resetLightboxView()
 }
 
 function showPreviousImage() {
@@ -606,7 +641,7 @@ function showPreviousImage() {
   const current = lightboxIndex.value
   const next = current <= 0 ? draft.value.attachments.length - 1 : current - 1
   lightboxAttachmentId.value = draft.value.attachments[next].id
-  lightboxZoomed.value = false
+  resetLightboxView()
 }
 
 function showNextImage() {
@@ -614,7 +649,62 @@ function showNextImage() {
   const current = lightboxIndex.value
   const next = current < 0 || current >= draft.value.attachments.length - 1 ? 0 : current + 1
   lightboxAttachmentId.value = draft.value.attachments[next].id
-  lightboxZoomed.value = false
+  resetLightboxView()
+}
+
+function setLightboxScale(value: number) {
+  lightboxFit.value = false
+  lightboxScale.value = Math.min(5, Math.max(0.25, Number(value.toFixed(2))))
+  if (lightboxScale.value <= 1) {
+    lightboxOffsetX.value = 0
+    lightboxOffsetY.value = 0
+  }
+}
+
+function zoomIn() {
+  setLightboxScale(lightboxScale.value + (lightboxScale.value < 1 ? 0.25 : 0.5))
+}
+
+function zoomOut() {
+  setLightboxScale(lightboxScale.value - (lightboxScale.value <= 1 ? 0.25 : 0.5))
+}
+
+function fitImage() {
+  resetLightboxView()
+}
+
+function toggleFitAndActualSize() {
+  if (lightboxFit.value) {
+    lightboxFit.value = false
+    lightboxScale.value = 1
+  } else {
+    fitImage()
+  }
+}
+
+function handleLightboxWheel(event: WheelEvent) {
+  const direction = event.deltaY < 0 ? 1 : -1
+  const step = lightboxScale.value < 1 ? 0.1 : 0.2
+  setLightboxScale(lightboxScale.value + direction * step)
+}
+
+function startLightboxPan(event: MouseEvent) {
+  if (event.button !== 0 || lightboxFit.value) return
+  lightboxDragging.value = true
+  lightboxDragStartX.value = event.clientX
+  lightboxDragStartY.value = event.clientY
+  lightboxDragOriginX.value = lightboxOffsetX.value
+  lightboxDragOriginY.value = lightboxOffsetY.value
+}
+
+function moveLightboxPan(event: MouseEvent) {
+  if (!lightboxDragging.value) return
+  lightboxOffsetX.value = lightboxDragOriginX.value + (event.clientX - lightboxDragStartX.value)
+  lightboxOffsetY.value = lightboxDragOriginY.value + (event.clientY - lightboxDragStartY.value)
+}
+
+function endLightboxPan() {
+  lightboxDragging.value = false
 }
 
 function handleLightboxKeydown(event: KeyboardEvent) {
@@ -628,6 +718,15 @@ function handleLightboxKeydown(event: KeyboardEvent) {
   } else if (event.key === 'ArrowRight') {
     event.preventDefault()
     showNextImage()
+  } else if (event.key === '+' || event.key === '=') {
+    event.preventDefault()
+    zoomIn()
+  } else if (event.key === '-') {
+    event.preventDefault()
+    zoomOut()
+  } else if (event.key === '0') {
+    event.preventDefault()
+    fitImage()
   }
 }
 
@@ -788,16 +887,21 @@ button,input,select,textarea { font: inherit; color: inherit; } button { cursor:
 .sort-control { width: min(230px, 48%); font-size: 12px; font-weight: 500; }.sort-control select { padding: 8px 34px 8px 10px; background: var(--oc-role-surface, #fff); }
 .entry-card { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--oc-role-outline-variant, #edf0f2); padding: 16px 20px; background: transparent; cursor: pointer; }.entry-card:hover,.entry-card.selected { background: var(--oc-role-surface-container-low, #f4f6f8); }.entry-card.selected { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-card.pinned { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--oc-role-primary, #0069a8) 65%, #f5b700); }.entry-card.selected.pinned { box-shadow: inset 3px 0 0 var(--oc-role-primary, #0069a8); }.entry-topline { margin-bottom: 6px; }.entry-meta { display: flex; align-items: center; gap: 7px; min-width: 0; }.pin-button { border: 0; background: transparent; border-radius: 6px; padding: 2px 4px; line-height: 1; font-size: 14px; opacity: .42; }.pin-button:hover,.pin-button.active { opacity: 1; background: var(--oc-role-surface-container, #eef2f6); }.type-badge { font-size: 11px; font-weight: 650; }.entry-date { font-size: 11px; opacity: .62; }.entry-card p { margin-top: 6px; font-size: 13px; opacity: .75; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }.task-progress { font-size: 11px; opacity: .65; margin-top: 8px; }.tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }.tags span { background: var(--oc-role-surface-container-high, #e9edf1); border-radius: 999px; padding: 2px 7px; font-size: 10px; }
 .editor-pane { overflow: auto; min-width: 0; }.editor { min-height: 100%; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; max-width: 960px; margin: 0 auto; }.editor-header { padding-bottom: 16px; border-bottom: 1px solid var(--oc-role-outline-variant, #dfe3e8); }.editor label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 650; }.editor label small { font-weight: 400; opacity: .6; }.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.task-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }.description-field { flex: 1; min-height: 300px; }.description-field textarea { flex: 1; min-height: 360px; resize: vertical; line-height: 1.6; font-family: inherit; }.attachments-section { display: grid; gap: 12px; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 16px; }.attachments-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }.attachments-header strong,.attachments-header small { display: block; }.attachments-header small { margin-top: 3px; opacity: .6; font-size: 11px; }.attachment-upload { display: inline-flex !important; flex-direction: row !important; align-items: center; width: auto; cursor: pointer; }.attachment-upload input { display: none; }.attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }.attachment-card { margin: 0; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); border-radius: 10px; overflow: hidden; background: var(--oc-role-surface, #fff); }.attachment-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--oc-role-surface-container-low, #f4f6f8); }.attachment-preview-button { display: block; width: 100%; border: 0; padding: 0; background: transparent; cursor: zoom-in; }.attachment-preview-button:hover img { filter: brightness(.96); }
-.lightbox-backdrop { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.88); display: flex; align-items: stretch; justify-content: stretch; }
-.lightbox-shell { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.lightbox-toolbar { position: absolute; z-index: 4; top: 0; left: 0; right: 0; min-height: 58px; padding: 10px 14px 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #fff; background: linear-gradient(to bottom, rgba(0,0,0,.72), transparent); }
+.lightbox-backdrop { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.9); display: flex; align-items: stretch; justify-content: stretch; }
+.lightbox-shell { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.lightbox-toolbar { position: absolute; z-index: 5; top: 0; left: 0; right: 0; min-height: 58px; padding: 10px 14px 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #fff; background: linear-gradient(to bottom, rgba(0,0,0,.78), transparent); pointer-events: none; }
+.lightbox-toolbar > * { pointer-events: auto; }
 .lightbox-meta { min-width: 0; display: flex; align-items: baseline; gap: 12px; }.lightbox-meta strong { max-width: min(70vw, 760px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.lightbox-meta span { opacity: .72; font-size: 12px; white-space: nowrap; }
-.lightbox-close,.lightbox-nav { border: 0; color: #fff; background: rgba(20,20,20,.55); backdrop-filter: blur(6px); border-radius: 999px; }.lightbox-close { width: 40px; height: 40px; font-size: 20px; }.lightbox-close:hover,.lightbox-nav:hover { background: rgba(50,50,50,.82); }
-.lightbox-nav { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; font-size: 38px; line-height: 1; }.lightbox-prev { left: 14px; }.lightbox-next { right: 14px; }
-.lightbox-image-button { max-width: 100%; max-height: 100%; width: 100%; height: 100%; border: 0; padding: 72px 74px 36px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: zoom-in; overflow: auto; }
-.lightbox-image-button img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
-.lightbox-image-button.zoomed { align-items: flex-start; justify-content: flex-start; cursor: zoom-out; }.lightbox-image-button img.zoomed { max-width: none; max-height: none; width: auto; height: auto; margin: auto; }
-@media (max-width: 700px) { .lightbox-image-button { padding: 68px 8px 22px; }.lightbox-nav { width: 42px; height: 42px; font-size: 32px; }.lightbox-prev { left: 8px; }.lightbox-next { right: 8px; }.lightbox-meta strong { max-width: 56vw; } }.attachment-card figcaption { display: grid; gap: 4px; padding: 9px; }.attachment-card figcaption span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }.attachment-card figcaption small { opacity: .58; font-size: 10px; }.attachment-remove { justify-self: start; padding: 5px 8px; margin-top: 3px; font-size: 11px; }.attachment-empty { font-size: 12px; opacity: .55; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
+.lightbox-close,.lightbox-nav,.lightbox-zoom-controls button { border: 0; color: #fff; background: rgba(20,20,20,.62); backdrop-filter: blur(6px); border-radius: 999px; }
+.lightbox-close { width: 40px; height: 40px; font-size: 20px; }.lightbox-close:hover,.lightbox-nav:hover,.lightbox-zoom-controls button:hover { background: rgba(60,60,60,.9); }
+.lightbox-nav { position: absolute; z-index: 4; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; font-size: 38px; line-height: 1; }.lightbox-prev { left: 14px; }.lightbox-next { right: 14px; }
+.lightbox-zoom-controls { position: absolute; z-index: 5; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 999px; color: #fff; background: rgba(18,18,18,.7); backdrop-filter: blur(8px); box-shadow: 0 6px 24px rgba(0,0,0,.3); }
+.lightbox-zoom-controls button { min-width: 34px; height: 34px; padding: 0 10px; font-size: 18px; }.lightbox-zoom-controls .fit-button { min-width: auto; border-radius: 8px; font-size: 12px; font-weight: 650; }.lightbox-zoom-controls span { min-width: 52px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.lightbox-viewport { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 70px 76px 70px; user-select: none; touch-action: none; cursor: zoom-in; }
+.lightbox-viewport.pannable { cursor: grab; }.lightbox-viewport.dragging { cursor: grabbing; }
+.lightbox-viewport img { display: block; max-width: none; max-height: none; transform-origin: center center; will-change: transform; box-shadow: 0 10px 40px rgba(0,0,0,.35); pointer-events: none; }
+.lightbox-viewport img.fitted { max-width: 100%; max-height: 100%; width: auto; height: auto; transform: none !important; }
+@media (max-width: 700px) { .lightbox-viewport { padding: 66px 8px 72px; }.lightbox-nav { width: 42px; height: 42px; font-size: 32px; }.lightbox-prev { left: 8px; }.lightbox-next { right: 8px; }.lightbox-meta strong { max-width: 56vw; }.lightbox-zoom-controls { bottom: 10px; } }.attachment-card figcaption { display: grid; gap: 4px; padding: 9px; }.attachment-card figcaption span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }.attachment-card figcaption small { opacity: .58; font-size: 10px; }.attachment-remove { justify-self: start; padding: 5px 8px; margin-top: 3px; font-size: 11px; }.attachment-empty { font-size: 12px; opacity: .55; }.metadata { display: flex; flex-wrap: wrap; gap: 16px; font-size: 10px; opacity: .5; border-top: 1px solid var(--oc-role-outline-variant, #e3e7ec); padding-top: 12px; overflow-wrap: anywhere; }
 .empty-state,.editor-placeholder { min-height: 280px; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-align: center; opacity: .62; padding: 30px; }.editor-placeholder { height: 100%; min-height: 500px; }.empty-icon { font-size: 38px; opacity: .45; }.spinner { width: 22px; height: 22px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }.spinning { animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 20px; }.type-picker { width: min(520px, 100%); background: var(--oc-role-surface, #fff); border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.28); padding: 18px; display: grid; gap: 8px; }.type-picker header { padding: 2px 2px 10px; }.type-choice { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; width: 100%; border: 1px solid var(--oc-role-outline-variant, #dfe3e8); background: transparent; border-radius: 10px; padding: 14px; text-align: left; }.type-choice:hover { background: var(--oc-role-surface-container-low, #f4f6f8); border-color: var(--oc-role-primary, #0069a8); }.choice-icon { font-size: 25px; }.type-choice strong,.type-choice small { display: block; }.type-choice small { margin-top: 3px; opacity: .65; line-height: 1.35; }
 @media (max-width: 900px) { .sort-control { width: min(210px, 50%); } .sidebar { width: 225px; flex-basis: 225px; }.content { grid-template-columns: 1fr; }.editor-pane { position: fixed; inset: 52px 0 0 225px; z-index: 10; background: var(--oc-role-background, #f7f8fa); }.editor-pane:has(.editor-placeholder) { display: none; }.task-fields { grid-template-columns: 1fr; } }
