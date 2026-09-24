@@ -51,7 +51,7 @@ The production bundle is written to `dist/`.
 ```text
 /var/lib/opencloud/web/assets/apps
 ```
-Typically in Opencloud 7.x default compose, the path is
+Typically in Opencloud 8.x default compose, the path is
 
 ```text
 ./config/opencloud/apps:/var/lib/opencloud/web/assets/apps
@@ -84,11 +84,6 @@ The app intentionally keeps the first version focused on interoperable RFC 5545 
 
 Some CalDAV servers expose collections that reject `VJOURNAL` queries. Those collections are skipped while other collections remain usable. If a resource changes in another client after it was loaded, save/delete will fail with HTTP 412 instead of silently overwriting the newer version.
 
-## License
-
-The original repository is licensed under the GNU Affero General Public License v3.0. This derivative keeps the existing `LICENSE` file.
-
-
 ## jtxBoard compatibility via DAVx5
 
 The app mirrors the three jtxBoard entry classes over CalDAV (but it should work with other Apps/Programs that support these collection classes:
@@ -98,15 +93,6 @@ The app mirrors the three jtxBoard entry classes over CalDAV (but it should work
 - **Task**: `VTODO` with optional start/due date, status, progress and priority -> Also tested with Thunderbird
 
 The UI reads both `VJOURNAL` and `VTODO` collections. Before deleting an externally-synced item, it refreshes the resource ETag so changes made by DAVx5/jtxBoard after page load do not cause avoidable `412 Precondition Failed` errors. Weak ETags are kept verbatim and are not sent through `If-Match`, because HTTP strong comparison cannot match a weak ETag. Existing objects retain unrecognized iCalendar properties when edited, which helps avoid losing jtxBoard-specific metadata.
-
-## Thanks
-
-Special thanks to FrankM from https://linux-nerds.org/topic/1850/opencloud-mein-erster-pr for the idea of user apps. Check out his blog and forum!
-
-## Disclaimer
-
-AI (GPT5.5) was used to support the building process of this app.
-
 
 ## Image attachments
 
@@ -121,3 +107,15 @@ Supported image formats:
 The application detects the actual image format from the file contents. Existing supported image attachments can be previewed or removed, and new images can be added from the editor.
 
 Because images are stored inside the `.ics` object, large images also increase the size of the CalDAV item.
+
+## Thanks
+
+Special thanks to FrankM from https://linux-nerds.org/topic/1850/opencloud-mein-erster-pr for the idea of user apps. Check out his blog and forum!
+
+## Disclaimer
+
+AI (GPT5.5) was used to support the building process of this app.
+
+## License
+
+The original repository is licensed under the GNU Affero General Public License v3.0. This derivative keeps the existing `LICENSE` file.
